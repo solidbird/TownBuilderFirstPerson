@@ -33,9 +33,10 @@ int main(int argc, char **argv){
 		TraceLog(LOG_INFO, "(%f, %f, %f)", cam3d.position.x, cam3d.position.y, cam3d.position.z);
 
 		for(int i = 0; i < 10; i++){
-			DrawCubeV((Vector3){0, CUBE_SIZE * i, 0}, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, (Color){rand() % 255, rand() % 255, rand() % 255, 255});
+			DrawCubeV((Vector3){0, CUBE_SIZE * i, 0}, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
 		}
-
+		
+		DrawPlane((Vector3){0,0,0}, (Vector2){10000, 10000}, BLUE);
 		DrawGrid(10000, CUBE_SIZE * 4);
 		EndMode3D();
 
