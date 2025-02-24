@@ -58,7 +58,6 @@ int main(int argc, char **argv){
 	};
 
 	Block_Element *block = (Block_Element*) malloc(sizeof(Block_Element) * WORLD_WIDTH * sizeof(Block_Element) * WORLD_HEIGHT);
-	int block_pos_index = 0;
 
 	SetTargetFPS(60);
 
@@ -86,18 +85,37 @@ int main(int argc, char **argv){
 			};
 
 			if(IsKeyPressed(KEY_I)){
-				block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x/CUBE_SIZE, snap_grid.z/CUBE_SIZE});
-				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
-				block[block_pos_index].position = snap_grid;
-				block[block_pos_index].element_type = grass;
-				block[block_pos_index].set = 1;
+				int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x/CUBE_SIZE, snap_grid.z/CUBE_SIZE});
+				if(block[block_pos_index].set){ 
+				}else{
+					int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x/CUBE_SIZE, snap_grid.z/CUBE_SIZE});
+					
+					TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
+					block[block_pos_index].position = snap_grid;
+					block[block_pos_index].element_type = grass;
+					block[block_pos_index].set = 1;
+
+					for(int y = -1; y <= 1; y++){
+						for(int x = -1; x <= 1; x++){
+							if(y == 0 && x == 0) continue;
+
+							block[block_pos_index + WORLD_WIDTH * y + x].position = (Vector3){
+								((int)((rc.point.x /CUBE_SIZE)) + x) * CUBE_SIZE,
+								0,
+								((int)((rc.point.z /CUBE_SIZE)) + y) * CUBE_SIZE,
+							};
+							block[block_pos_index + WORLD_WIDTH * y + x].element_type = shore;
+							block[block_pos_index + WORLD_WIDTH * y + x].set = 1;
+						}
+					}
+				}
 			}
 			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, GRAY);
 		}
 
 		//We only need to draw the cubes that are close to you
 		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
-		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 250, cam3d.position.z - 250});
+		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 50, cam3d.position.z - 50});
 		int index_high = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x + 250, cam3d.position.z + 250});
 		for(int index = index_low; index < index_high; index++){
 			if(block[index].set){
