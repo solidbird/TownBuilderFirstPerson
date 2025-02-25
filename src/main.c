@@ -14,6 +14,8 @@
 #define CUBE_SIZE 0.5
 #define WORLD_WIDTH 1000
 #define WORLD_HEIGHT 1000
+#define WINDOW_WIDTH 1600
+#define WINDOW_HEIGHT 900
 
 Vector3 get_camera_look_direction(Camera3D *cam3d){
 	Vector3 camera_direction = Vector3Subtract(cam3d->target, cam3d->position);
@@ -42,12 +44,11 @@ typedef struct Block_Element {
 } Block_Element;
 
 int main(int argc, char **argv){
-	InitWindow(1600, 900, "WaveFunctionColapse Test");
-	DisableCursor();
+	InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "WaveFunctionColapse Test");
 
 	Camera3D cam3d = {0};
 	cam3d.position = (Vector3){CUBE_SIZE * 2,CUBE_SIZE * 2, CUBE_SIZE * 2};
-	cam3d.target = (Vector3){0, 0, 0};
+	cam3d.target = (Vector3){2, 2, 0};
 	cam3d.up = (Vector3){0, 1, 0};
 	cam3d.fovy = 60.0;
 	cam3d.projection = CAMERA_PERSPECTIVE;
@@ -58,25 +59,36 @@ int main(int argc, char **argv){
 	};
 
 	Block_Element *block = (Block_Element*) malloc(sizeof(Block_Element) * WORLD_WIDTH * sizeof(Block_Element) * WORLD_HEIGHT);
+	HideCursor();
 
 	SetTargetFPS(60);
 
 	while(!WindowShouldClose()){
+		UpdateCamera(&cam3d, CAMERA_FREE);
+
 		BeginDrawing();
 		ClearBackground(BLACK);
 		BeginMode3D(cam3d);
-		UpdateCamera(&cam3d, CAMERA_FREE);
 
 		camera_ray.position = cam3d.position;
 		camera_ray.direction = get_camera_look_direction(&cam3d);
 
+		//We only need to draw the cubes that are close to you
+		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
+		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 250, cam3d.position.z - 250});
+		int index_high = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x + 250, cam3d.position.z + 250});
+		for(int index = index_low; index < index_high; index++){
+			if(block[index].set){
+				DrawCubeV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[block[index].element_type]);
+			}
+		}
+	
 		RayCollision rc = GetRayCollisionQuad(camera_ray, 
 			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
 			(Vector3){WORLD_WIDTH, 0, -WORLD_HEIGHT},
 			(Vector3){-WORLD_WIDTH, 0, -WORLD_HEIGHT},
 			(Vector3){-WORLD_WIDTH, 0, WORLD_HEIGHT});
 		//TraceLog(LOG_INFO, "%d, (%f, %f, %f)",block_pos_index, rc.point.x, rc.point.y, rc.point.z);
-		TraceLog(LOG_INFO, "CAM POS: (%f, %f, %f)", cam3d.position.x, cam3d.position.y, cam3d.position.z);
 		if(rc.hit){
 			Vector3 snap_grid = {
 				(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
@@ -84,43 +96,32 @@ int main(int argc, char **argv){
 				(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 			};
 
-			if(IsKeyPressed(KEY_I)){
-				int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x/CUBE_SIZE, snap_grid.z/CUBE_SIZE});
-				if(block[block_pos_index].set){ 
-				}else{
-					int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x/CUBE_SIZE, snap_grid.z/CUBE_SIZE});
-					
-					TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
-					block[block_pos_index].position = snap_grid;
-					block[block_pos_index].element_type = grass;
-					block[block_pos_index].set = 1;
+			if(IsKeyPressed(KEY_I) || IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+				int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x, snap_grid.z});
 
-					for(int y = -1; y <= 1; y++){
-						for(int x = -1; x <= 1; x++){
-							if(y == 0 && x == 0) continue;
+				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
+				block[block_pos_index].position = snap_grid;
+				block[block_pos_index].element_type = stone;
+				block[block_pos_index].set = 1;
 
-							block[block_pos_index + WORLD_WIDTH * y + x].position = (Vector3){
-								((int)((rc.point.x /CUBE_SIZE)) + x) * CUBE_SIZE,
-								0,
-								((int)((rc.point.z /CUBE_SIZE)) + y) * CUBE_SIZE,
-							};
-							block[block_pos_index + WORLD_WIDTH * y + x].element_type = shore;
-							block[block_pos_index + WORLD_WIDTH * y + x].set = 1;
-						}
+				for(int y = -1; y <= 1; y++){
+					for(int x = -1; x <= 1; x++){
+						if(y == 0 && x == 0) continue;
+						int index = block_pos_index + WORLD_WIDTH * y + x;
+						if(block[index].set && block[index].element_type == stone) continue;
+
+						block[index].position = (Vector3){
+							((int)((rc.point.x / CUBE_SIZE)) + x) * CUBE_SIZE,
+							0,
+							((int)((rc.point.z / CUBE_SIZE)) + y) * CUBE_SIZE,
+						};
+						block[index].element_type = shore;
+						block[index].set = 1;
+						TraceLog(LOG_INFO, "index: %d, vector: (%.2f, %.2f)", index, block[index].position.x, block[index].position.z);
 					}
 				}
 			}
-			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, GRAY);
-		}
-
-		//We only need to draw the cubes that are close to you
-		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
-		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 50, cam3d.position.z - 50});
-		int index_high = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x + 250, cam3d.position.z + 250});
-		for(int index = index_low; index < index_high; index++){
-			if(block[index].set){
-				DrawCubeV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[block[index].element_type]);
-			}
+			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
 		}
 
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
@@ -130,6 +131,11 @@ int main(int argc, char **argv){
 		DrawFPS(10, 10);
 
 		EndDrawing();
+		Vector2 mouse_pos = GetMousePosition();
+		TraceLog(LOG_INFO, "MOUSE: (%f, %f)", mouse_pos.x, mouse_pos.y);
+		if(mouse_pos.x < 100 || mouse_pos.y < 100 || mouse_pos.x > WINDOW_WIDTH - 100 || mouse_pos.y > WINDOW_HEIGHT - 100){
+			SetMousePosition(WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+		}
 	}
 	return 0;
 }
