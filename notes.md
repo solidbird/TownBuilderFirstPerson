@@ -38,3 +38,10 @@ We have following elements:
 * Building -> Ring formation -> Grass (Garden) in the middle
 * Building -> On top -> Tower
 
+#### Ring of buildings -> Grass
+A valid idea would be to introduce multithreading at this point right here to
+let the algorithm run to detect circular buildings and plant the grass according to that.
+
+##### Multithreading for all Wave Function Collapse rules
+We could even bring this idea a little bit further and introduce multithreading for
+all the rule calculations and algorithms. This might be better after all. (I am just scared of race conditions and deadlocks).
