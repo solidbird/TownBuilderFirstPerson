@@ -100,28 +100,37 @@ int main(int argc, char **argv){
 				int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x, snap_grid.z});
 
 				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
-				block[block_pos_index].position = snap_grid;
-				block[block_pos_index].element_type = stone;
-				block[block_pos_index].set = 1;
+				if(!block[block_pos_index].set || block[block_pos_index].element_type == shore){
+					block[block_pos_index].position = snap_grid;
+					block[block_pos_index].element_type = stone;
+					block[block_pos_index].set = 1;
+				}else if(block[block_pos_index].element_type == stone){
+					block[block_pos_index].position = snap_grid;
+					block[block_pos_index].element_type = building;
+					block[block_pos_index].set = 1;
+				}
 
-				for(int y = -1; y <= 1; y++){
-					for(int x = -1; x <= 1; x++){
-						if(y == 0 && x == 0) continue;
-						int index = block_pos_index + WORLD_WIDTH * y + x;
-						if(block[index].set && block[index].element_type == stone) continue;
+				if(block[block_pos_index].element_type == stone){
+					for(int y = -1; y <= 1; y++){
+						for(int x = -1; x <= 1; x++){
+							if(y == 0 && x == 0) continue;
+							int index = block_pos_index + WORLD_WIDTH * y + x;
+							if(block[index].set && (block[index].element_type == stone || block[index].element_type == building)) continue;
 
-						block[index].position = (Vector3){
-							((int)((rc.point.x / CUBE_SIZE)) + x) * CUBE_SIZE,
-							0,
-							((int)((rc.point.z / CUBE_SIZE)) + y) * CUBE_SIZE,
-						};
-						block[index].element_type = shore;
-						block[index].set = 1;
-						TraceLog(LOG_INFO, "index: %d, vector: (%.2f, %.2f)", index, block[index].position.x, block[index].position.z);
+							block[index].position = (Vector3){
+								((int)((rc.point.x / CUBE_SIZE)) + x) * CUBE_SIZE,
+								0,
+								((int)((rc.point.z / CUBE_SIZE)) + y) * CUBE_SIZE,
+							};
+							block[index].element_type = shore;
+							block[index].set = 1;
+							TraceLog(LOG_INFO, "index: %d, vector: (%.2f, %.2f)", index, block[index].position.x, block[index].position.z);
+						}
 					}
 				}
 			}
-			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
+			//DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
+			DrawCubeWiresV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
 		}
 
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
