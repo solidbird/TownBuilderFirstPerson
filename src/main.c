@@ -75,7 +75,7 @@ int main(int argc, char **argv){
 
 		//We only need to draw the cubes that are close to you
 		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
-		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 250, cam3d.position.z - 250});
+		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 50, cam3d.position.z - 50});
 		int index_high = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x + 250, cam3d.position.z + 250});
 		for(int index = index_low; index < index_high; index++){
 			if(block[index].set){
@@ -105,6 +105,7 @@ int main(int argc, char **argv){
 					block[block_pos_index].element_type = stone;
 					block[block_pos_index].set = 1;
 				}else if(block[block_pos_index].element_type == stone){
+					snap_grid.y = block[block_pos_index].position.y + CUBE_SIZE;
 					block[block_pos_index].position = snap_grid;
 					block[block_pos_index].element_type = building;
 					block[block_pos_index].set = 1;
