@@ -97,8 +97,8 @@ int main(int argc, char **argv){
 				(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 			};
 
-			if(IsKeyPressed(KEY_I) || IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
-				int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x, snap_grid.z});
+			int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x, snap_grid.z});
+			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
 
 				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
 				if(!block[block_pos_index].set || block[block_pos_index].element_type == shore){
@@ -131,8 +131,11 @@ int main(int argc, char **argv){
 					}
 				}
 			}
-			//DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
-			DrawCubeWiresV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
+			if(IsKeyDown(KEY_O) || IsMouseButtonDown(MOUSE_BUTTON_RIGHT)){
+				block[block_pos_index] = (Block_Element){0};
+			}
+			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
+			//DrawCubeWiresV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
 		}
 
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
