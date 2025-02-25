@@ -80,6 +80,7 @@ int main(int argc, char **argv){
 		for(int index = index_low; index < index_high; index++){
 			if(block[index].set){
 				DrawCubeV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[block[index].element_type]);
+				DrawCubeWiresV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
 			}
 		}
 	
