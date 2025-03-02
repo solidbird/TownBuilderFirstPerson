@@ -86,6 +86,25 @@ int DeleteBlock(Block_Element *be[100], Vector3 pos){
 	return 0;
 }
 
+Block_Element* GetBlock(Block_Element *be[100], Vector3 pos){
+	int index_x = pos.x / 100;
+	int index_y = pos.y / 100;
+
+	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
+	Block_Element *prev_be = NULL;
+	while(tmp_be->next != NULL){
+		prev_be = tmp_be;
+		tmp_be = tmp_be->next;
+		if( tmp_be->position.x == pos.x &&
+			tmp_be->position.y == pos.y &&
+			tmp_be->position.z == pos.z ){
+				return tmp_be;
+		}
+	}
+
+	return NULL;
+}
+
 int main(int argc, char **argv){
 	InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "WaveFunctionColapse Test");
 	Block_Element *head_block;
