@@ -77,6 +77,23 @@ bh[6] = ...
 bh[7] = ...
 bh[8] = ...
 ```
+ If I really think about it we don't need these regions at all and I can
+just handle the render distance by putting some kind of effect
+on it or some kind of shader that will just cut off the rendering
+after a certain distance and just make it misty or cloudy.
+
+But the region might be good idea to allow quicker search of the dynamic
+linked list. So for example if we search for the block {345,213,86} we
+can just look in the array:
+```
+---------
+|0|1|2|3|
+---------
+|4|5|6|7|
+---------
+|8|9|10|x|
+---------
+```
 
 ## Wave Function Collapse Building blocks
 We have following elements:
