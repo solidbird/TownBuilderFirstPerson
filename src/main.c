@@ -14,6 +14,7 @@
 #define CUBE_SIZE 0.5
 #define WORLD_WIDTH 1000
 #define WORLD_HEIGHT 1000
+#define WORLD_DEPTH 1000
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
 
@@ -24,9 +25,11 @@ Vector3 get_camera_look_direction(Camera3D *cam3d){
 	return camera_direction;
 }
 
-int translate_vector2_to_array_coordinates(Vector2 src){
-	return ((int)(src.x / CUBE_SIZE) + WORLD_WIDTH/2) + (int)(((src.y / CUBE_SIZE) + WORLD_HEIGHT/2) * WORLD_WIDTH);
-}
+/*int translate_vector3_to_array_coordinates(Vector3 src){
+	return ((int)(src.x / CUBE_SIZE) + WORLD_WIDTH/2) +
+			(int)(((src.y / CUBE_SIZE) + WORLD_HEIGHT/2) * WORLD_WIDTH) +
+			(int)(((src.z / CUBE_SIZE) + WORLD_DEPTH/2) * WORLD_WIDTH * WORLD_HEIGHT);
+}*/
 
 typedef enum ELEMENT {
 	stone,
@@ -40,11 +43,52 @@ Color element_color[] = {GRAY, GREEN, YELLOW, PURPLE};
 typedef struct Block_Element {
 	Vector3 position;
 	ELEMENT element_type;
-	int set;
+	Block_Element *next;
 } Block_Element;
+
+void InitBlockElements(Block_Element *be[100]){
+	for(int i = 0; i < 100; i++){
+		be[i] = malloc(sizeof(Block_Element));
+		be[i]->next = NULL;
+	}
+}
+
+void AddBlock(Block_Element *be[100], Vector3 pos, ELEMENT element_type){
+	int index_x = pos.x / 100;
+	int index_y = pos.y / 100;
+
+	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
+	be[index_x + index_y * 100]->next = malloc(sizeof(Block_Element));
+	be[index_x + index_y * 100]->position = pos;
+	be[index_x + index_y * 100]->element_type = element_type;
+	be[index_x + index_y * 100]->next = tmp_be;
+}
+
+int DeleteBlock(Block_Element *be[100], Vector3 pos){
+	int index_x = pos.x / 100;
+	int index_y = pos.y / 100;
+
+	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
+	Block_Element *prev_be = NULL;
+	while(tmp_be->next != NULL){
+		prev_be = tmp_be;
+		tmp_be = tmp_be->next;
+		if( tmp_be->position.x == pos.x &&
+			tmp_be->position.y == pos.y &&
+			tmp_be->position.z == pos.z ){
+				prev_be->next = tmp_be->next;
+				free(tmp_be);
+
+				return 1;
+		}
+	}
+
+	return 0;
+}
 
 int main(int argc, char **argv){
 	InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "WaveFunctionColapse Test");
+	Block_Element *head_block;
 
 	Camera3D cam3d = {0};
 	cam3d.position = (Vector3){CUBE_SIZE * 2,CUBE_SIZE * 2, CUBE_SIZE * 2};
@@ -58,7 +102,10 @@ int main(int argc, char **argv){
 		get_camera_look_direction(&cam3d)
 	};
 
-	Block_Element *block = (Block_Element*) malloc(sizeof(Block_Element) * WORLD_WIDTH * sizeof(Block_Element) * WORLD_HEIGHT);
+	if(block == NULL){
+		printf("NOPE");
+		return -1;
+	}
 	HideCursor();
 
 	SetTargetFPS(60);
@@ -75,14 +122,15 @@ int main(int argc, char **argv){
 
 		//We only need to draw the cubes that are close to you
 		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
-		int index_low = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x - 50, cam3d.position.z - 50});
-		int index_high = translate_vector2_to_array_coordinates((Vector2){cam3d.position.x + 250, cam3d.position.z + 250});
+		/*int index_low = translate_vector3_to_array_coordinates((Vector3){cam3d.position.x - 50, cam3d.position.y - 50, cam3d.position.z - 50});
+		int index_high = translate_vector3_to_array_coordinates((Vector3){cam3d.position.x + 250, cam3d.position.y + 250, cam3d.position.z + 250});
+		
 		for(int index = index_low; index < index_high; index++){
 			if(block[index].set){
 				DrawCubeV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[block[index].element_type]);
 				DrawCubeWiresV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
 			}
-		}
+		}*/
 	
 		RayCollision rc = GetRayCollisionQuad(camera_ray, 
 			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
@@ -97,7 +145,7 @@ int main(int argc, char **argv){
 				(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 			};
 
-			int block_pos_index = translate_vector2_to_array_coordinates((Vector2){snap_grid.x, snap_grid.z});
+			//int block_pos_index = translate_vector3_to_array_coordinates((Vector3){snap_grid.x, snap_grid.y, snap_grid.z});
 			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
 
 				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
