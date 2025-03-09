@@ -12,9 +12,9 @@
 #include <math.h>
 
 #define CUBE_SIZE 0.5
-#define WORLD_WIDTH 1000
-#define WORLD_HEIGHT 1000
-#define WORLD_DEPTH 1000
+#define WORLD_WIDTH 500
+#define WORLD_HEIGHT 500
+#define WORLD_DEPTH 500 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
 
@@ -43,32 +43,54 @@ Color element_color[] = {GRAY, GREEN, YELLOW, PURPLE};
 typedef struct Block_Element {
 	Vector3 position;
 	ELEMENT element_type;
-	Block_Element *next;
+	struct Block_Element *next;
 } Block_Element;
 
 void InitBlockElements(Block_Element *be[100]){
 	for(int i = 0; i < 100; i++){
 		be[i] = malloc(sizeof(Block_Element));
+		be[i]->position = (Vector3){0};
+		be[i]->element_type = stone;
 		be[i]->next = NULL;
 	}
 }
 
-void AddBlock(Block_Element *be[100], Vector3 pos, ELEMENT element_type){
-	int index_x = pos.x / 100;
-	int index_y = pos.y / 100;
-
-	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
-	be[index_x + index_y * 100]->next = malloc(sizeof(Block_Element));
-	be[index_x + index_y * 100]->position = pos;
-	be[index_x + index_y * 100]->element_type = element_type;
-	be[index_x + index_y * 100]->next = tmp_be;
+void PrintBlocks(Block_Element *be){
+	Block_Element *tmp_be = be;
+	TraceLog(LOG_INFO, "BLOCK INFO {");
+	int i = 0;
+	while(tmp_be != NULL){
+		TraceLog(LOG_INFO, "\t%d: {%.2f, %.2f, %.2f}", i, tmp_be->position.x, tmp_be->position.y, tmp_be->position.z);
+		tmp_be = tmp_be->next;
+		i++;
+	}
+	TraceLog(LOG_INFO, "}");	
 }
 
-int DeleteBlock(Block_Element *be[100], Vector3 pos){
+void PrintAllBlocks(Block_Element *be[100]){
+	for(int i = 0; i < 100; i++){
+		TraceLog(LOG_INFO, "HEAD BLOCK %d", i);
+		PrintBlocks(be[i]);
+	}
+}
+
+void AddBlock(Block_Element *be, Vector3 pos, ELEMENT element_type){
+	int index_x = pos.x / 100;
+	int index_y = pos.z / 100;
+
+	Block_Element *tmp_be = be->next;
+	be->next = malloc(sizeof(Block_Element));
+	be->next->position = pos;
+	be->next->element_type = element_type;
+	be->next->next = tmp_be;
+	TraceLog(LOG_INFO, "ADDED BLOCK (%d) @ {%.2f, %.2f, %.2f}",(index_x+5) + (index_y+5) * 10 ,be->next->position.x, be->next->position.y, be->next->position.z);
+}
+
+int DeleteBlock(Block_Element *be, Vector3 pos){
 	int index_x = pos.x / 100;
 	int index_y = pos.y / 100;
 
-	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
+	Block_Element *tmp_be = be[index_x + index_y * 100].next;
 	Block_Element *prev_be = NULL;
 	while(tmp_be->next != NULL){
 		prev_be = tmp_be;
@@ -86,20 +108,15 @@ int DeleteBlock(Block_Element *be[100], Vector3 pos){
 	return 0;
 }
 
-Block_Element* GetBlock(Block_Element *be[100], Vector3 pos){
-	int index_x = pos.x / 100;
-	int index_y = pos.y / 100;
-
-	Block_Element *tmp_be = be[index_x + index_y * 100]->next;
-	Block_Element *prev_be = NULL;
-	while(tmp_be->next != NULL){
-		prev_be = tmp_be;
-		tmp_be = tmp_be->next;
+Block_Element* GetBlock(Block_Element *be, Vector3 pos){
+	Block_Element *tmp_be = be->next;
+	while(tmp_be != NULL){
 		if( tmp_be->position.x == pos.x &&
 			tmp_be->position.y == pos.y &&
 			tmp_be->position.z == pos.z ){
 				return tmp_be;
 		}
+		tmp_be = tmp_be->next;
 	}
 
 	return NULL;
@@ -107,10 +124,11 @@ Block_Element* GetBlock(Block_Element *be[100], Vector3 pos){
 
 int main(int argc, char **argv){
 	InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "WaveFunctionColapse Test");
-	Block_Element *head_block;
+	Block_Element *head_block[100];
+	InitBlockElements(head_block);
 
 	Camera3D cam3d = {0};
-	cam3d.position = (Vector3){CUBE_SIZE * 2,CUBE_SIZE * 2, CUBE_SIZE * 2};
+	cam3d.position = (Vector3){CUBE_SIZE * 2, CUBE_SIZE * 2, CUBE_SIZE * 2};
 	cam3d.target = (Vector3){2, 2, 0};
 	cam3d.up = (Vector3){0, 1, 0};
 	cam3d.fovy = 60.0;
@@ -121,10 +139,6 @@ int main(int argc, char **argv){
 		get_camera_look_direction(&cam3d)
 	};
 
-	if(block == NULL){
-		printf("NOPE");
-		return -1;
-	}
 	HideCursor();
 
 	SetTargetFPS(60);
@@ -139,17 +153,20 @@ int main(int argc, char **argv){
 		camera_ray.position = cam3d.position;
 		camera_ray.direction = get_camera_look_direction(&cam3d);
 
-		//We only need to draw the cubes that are close to you
-		//TODO: This doesnt really work how I wanted it. I just put the barriers -250/+250 up.
-		/*int index_low = translate_vector3_to_array_coordinates((Vector3){cam3d.position.x - 50, cam3d.position.y - 50, cam3d.position.z - 50});
-		int index_high = translate_vector3_to_array_coordinates((Vector3){cam3d.position.x + 250, cam3d.position.y + 250, cam3d.position.z + 250});
-		
-		for(int index = index_low; index < index_high; index++){
-			if(block[index].set){
-				DrawCubeV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[block[index].element_type]);
-				DrawCubeWiresV(block[index].position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+		int region_index_x = (int)(cam3d.position.x / 100);
+		int region_index_y = (int)(cam3d.position.z / 100);
+		//TraceLog(LOG_INFO, "REGION: {%.2f, %.2f, %.2f}", cam3d.position.x, cam3d.position.y, cam3d.position.z);
+
+		for(int y = region_index_y - 1; y < region_index_y + 1; y++){
+			for(int x = region_index_x - 1; x < region_index_x + 1; x++){
+				Block_Element *be = head_block[(x+5) + (y+5) * 10]->next;
+				while(be != NULL){
+					DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
+					DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+					be = be->next;
+				}
 			}
-		}*/
+		}
 	
 		RayCollision rc = GetRayCollisionQuad(camera_ray, 
 			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
@@ -164,45 +181,32 @@ int main(int argc, char **argv){
 				(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 			};
 
-			//int block_pos_index = translate_vector3_to_array_coordinates((Vector3){snap_grid.x, snap_grid.y, snap_grid.z});
 			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
-
-				TraceLog(LOG_INFO, "KEY_I: %d", block_pos_index);
-				if(!block[block_pos_index].set || block[block_pos_index].element_type == shore){
-					block[block_pos_index].position = snap_grid;
-					block[block_pos_index].element_type = stone;
-					block[block_pos_index].set = 1;
-				}else if(block[block_pos_index].element_type == stone){
-					snap_grid.y = block[block_pos_index].position.y + CUBE_SIZE;
-					block[block_pos_index].position = snap_grid;
-					block[block_pos_index].element_type = building;
-					block[block_pos_index].set = 1;
-				}
-
-				if(block[block_pos_index].element_type == stone){
-					for(int y = -1; y <= 1; y++){
-						for(int x = -1; x <= 1; x++){
-							if(y == 0 && x == 0) continue;
-							int index = block_pos_index + WORLD_WIDTH * y + x;
-							if(block[index].set && (block[index].element_type == stone || block[index].element_type == building)) continue;
-
-							block[index].position = (Vector3){
-								((int)((rc.point.x / CUBE_SIZE)) + x) * CUBE_SIZE,
-								0,
-								((int)((rc.point.z / CUBE_SIZE)) + y) * CUBE_SIZE,
-							};
-							block[index].element_type = shore;
-							block[index].set = 1;
-							TraceLog(LOG_INFO, "index: %d, vector: (%.2f, %.2f)", index, block[index].position.x, block[index].position.z);
-						}
+				/*Block_Element *be = GetBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid);
+				if(be != NULL && be->element_type == shore){
+					AddBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid, stone);
+				}else if(be == NULL){
+					AddBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid, stone);
+				}*/
+				//PrintAllBlocks(head_block);
+				int index = (region_index_x + 5) + (region_index_y + 5) * 10;
+				int snap_index_x = (snap_grid.x / 100);
+				int snap_index_y = (snap_grid.z / 100);
+				Block_Element *be = GetBlock(head_block[index], snap_grid);
+				if( snap_index_x > region_index_x - 2 &&
+					snap_index_x < region_index_x + 2 &&
+					snap_index_y > region_index_y - 2 &&
+					snap_index_y < region_index_y + 2 ){
+					if(be == NULL){
+						AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
+					}else{
+						//WAVE FUNCTION COLLAPSE THAT BLOCK ACCORDING TO RULES
+						PrintAllBlocks(head_block);
+						TraceLog(LOG_INFO, "BLOCK: %d @ {%.2f, %.2f}", index, be->position.x, be->position.y);
 					}
 				}
 			}
-			if(IsKeyDown(KEY_O) || IsMouseButtonDown(MOUSE_BUTTON_RIGHT)){
-				block[block_pos_index] = (Block_Element){0};
-			}
 			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
-			//DrawCubeWiresV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, PURPLE);
 		}
 
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
@@ -213,7 +217,6 @@ int main(int argc, char **argv){
 
 		EndDrawing();
 		Vector2 mouse_pos = GetMousePosition();
-		TraceLog(LOG_INFO, "MOUSE: (%f, %f)", mouse_pos.x, mouse_pos.y);
 		if(mouse_pos.x < 100 || mouse_pos.y < 100 || mouse_pos.x > WINDOW_WIDTH - 100 || mouse_pos.y > WINDOW_HEIGHT - 100){
 			SetMousePosition(WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
 		}
