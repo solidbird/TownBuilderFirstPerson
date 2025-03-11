@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define GLSL_VERSION 330
+
 #define CUBE_SIZE 0.5
 #define WORLD_WIDTH 500
 #define WORLD_HEIGHT 500
@@ -139,6 +141,8 @@ int main(int argc, char **argv){
 		get_camera_look_direction(&cam3d)
 	};
 
+	Shader fog_shader = LoadShader(0, TextFormat("/home/tapir/Projects/libs/raylib/examples/shaders/resources/shaders/glsl%i/pixelizer.fs", GLSL_VERSION));
+
 	HideCursor();
 
 	SetTargetFPS(60);
@@ -157,16 +161,20 @@ int main(int argc, char **argv){
 		int region_index_y = (int)(cam3d.position.z / 100);
 		//TraceLog(LOG_INFO, "REGION: {%.2f, %.2f, %.2f}", cam3d.position.x, cam3d.position.y, cam3d.position.z);
 
-		for(int y = region_index_y - 1; y < region_index_y + 1; y++){
-			for(int x = region_index_x - 1; x < region_index_x + 1; x++){
-				Block_Element *be = head_block[(x+5) + (y+5) * 10]->next;
+		//for(int y = region_index_y - 1; y < region_index_y + 1; y++){
+			//for(int x = region_index_x - 1; x < region_index_x + 1; x++){
+			//int index = (x+5) + (y+5) * 10;
+			for(int index = 0; index < 100; index++){
+				Block_Element *be = head_block[index]->next;
+				// https://www.raylib.com/examples/shaders/loader.html?name=shaders_fog
+				// Later to make some fog so we dont have to show as much
 				while(be != NULL){
 					DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
 					DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
 					be = be->next;
 				}
 			}
-		}
+		//}
 	
 		RayCollision rc = GetRayCollisionQuad(camera_ray, 
 			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
@@ -182,13 +190,6 @@ int main(int argc, char **argv){
 			};
 
 			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
-				/*Block_Element *be = GetBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid);
-				if(be != NULL && be->element_type == shore){
-					AddBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid, stone);
-				}else if(be == NULL){
-					AddBlock(head_block[(region_index_x + 5) + (region_index_y + 5) * 10], snap_grid, stone);
-				}*/
-				//PrintAllBlocks(head_block);
 				int index = (region_index_x + 5) + (region_index_y + 5) * 10;
 				int snap_index_x = (snap_grid.x / 100);
 				int snap_index_y = (snap_grid.z / 100);
@@ -201,6 +202,8 @@ int main(int argc, char **argv){
 						AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
 					}else{
 						//WAVE FUNCTION COLLAPSE THAT BLOCK ACCORDING TO RULES
+						snap_grid = (Vector3){be->position.x, be->position.y + CUBE_SIZE, be->position.z};
+						AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
 						PrintAllBlocks(head_block);
 						TraceLog(LOG_INFO, "BLOCK: %d @ {%.2f, %.2f}", index, be->position.x, be->position.y);
 					}
@@ -211,6 +214,7 @@ int main(int argc, char **argv){
 
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
 		DrawGrid(WORLD_WIDTH, CUBE_SIZE * 4);
+
 		EndMode3D();
 
 		DrawFPS(10, 10);
