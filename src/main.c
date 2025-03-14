@@ -129,10 +129,10 @@ static inline void draw_on_plain(RayCollision rc, Block_Element **head_block, in
 	if(rc.hit){
 		Vector3 snap_grid = {
 			(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
-			0,
+			CUBE_SIZE,
 			(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 		};
-		TraceLog(LOG_INFO, "AAA: {%.2f, %.2f, %.2f}", rc.normal.x , rc.normal.y, rc.normal.z);
+		//TraceLog(LOG_INFO, "AAA: {%.2f, %.2f, %.2f}", rc.normal.x , rc.normal.y, rc.normal.z);
 
 		if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
 			int index = (region_index_x + 5) + (region_index_y + 5) * 10;
@@ -175,12 +175,18 @@ int main(int argc, char **argv){
 		cam3d.position,
 		get_camera_look_direction(&cam3d)
 	};
-
+	Matrix floor_transform = (Matrix) { WORLD_WIDTH/CUBE_SIZE, 0, 0, 0,
+										0, 1/CUBE_SIZE, 0, -CUBE_SIZE,
+										0, 0, WORLD_HEIGHT/CUBE_SIZE, 0,
+										0, 0, 0, 1};
 	Shader fog_shader = LoadShader(0, TextFormat("/home/tapir/Projects/libs/raylib/examples/shaders/resources/shaders/glsl%i/pixelizer.fs", GLSL_VERSION));
 	Mesh cube_mesh = (GenMeshCube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE));
     Material cube_material = LoadMaterialDefault();
     cube_material.maps[MATERIAL_MAP_DIFFUSE].color = GRAY;
 
+    Material floor_material = LoadMaterialDefault();
+    floor_material.maps[MATERIAL_MAP_DIFFUSE].color = BLUE;
+	
 	HideCursor();
 
 	SetTargetFPS(60);
@@ -199,13 +205,14 @@ int main(int argc, char **argv){
 		int region_index_y = (int)(cam3d.position.z / 100);
 		//TraceLog(LOG_INFO, "REGION: {%.2f, %.2f, %.2f}", cam3d.position.x, cam3d.position.y, cam3d.position.z);
 
-		RayCollision rc = GetRayCollisionQuad(camera_ray, 
+		/*RayCollision rc = GetRayCollisionQuad(camera_ray, 
 			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
 			(Vector3){WORLD_WIDTH, 0, -WORLD_HEIGHT},
 			(Vector3){-WORLD_WIDTH, 0, -WORLD_HEIGHT},
-			(Vector3){-WORLD_WIDTH, 0, WORLD_HEIGHT});
+			(Vector3){-WORLD_WIDTH, 0, WORLD_HEIGHT});*/
 
 		RayCollision rc_block = {0};
+		RayCollision rc_floor = GetRayCollisionMesh(camera_ray, cube_mesh, floor_transform);
 		int draw_hit_block = 0;
 
 		//for(int y = region_index_y - 1; y < region_index_y + 1; y++){
@@ -245,8 +252,9 @@ int main(int argc, char **argv){
 			}
 		//}
 
-		draw_on_plain(rc, head_block, region_index_x, region_index_y);
-		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
+		//DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
+		draw_on_plain(rc_floor, head_block, region_index_x, region_index_y);
+		DrawMesh(cube_mesh, floor_material, floor_transform);
 		DrawGrid(WORLD_WIDTH, CUBE_SIZE * 4);
 
 		EndMode3D();
