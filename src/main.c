@@ -124,6 +124,41 @@ Block_Element* GetBlock(Block_Element *be, Vector3 pos){
 	return NULL;
 }
 
+static inline void draw_on_plain(RayCollision rc, Block_Element **head_block, int region_index_x, int region_index_y){
+	//TraceLog(LOG_INFO, "%d, (%f, %f, %f)",block_pos_index, rc.point.x, rc.point.y, rc.point.z);
+	if(rc.hit){
+		Vector3 snap_grid = {
+			(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
+			0,
+			(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
+		};
+		TraceLog(LOG_INFO, "AAA: {%.2f, %.2f, %.2f}", rc.normal.x , rc.normal.y, rc.normal.z);
+
+		if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+			int index = (region_index_x + 5) + (region_index_y + 5) * 10;
+			int snap_index_x = (snap_grid.x / 100);
+			int snap_index_y = (snap_grid.z / 100);
+			Block_Element *be = GetBlock(head_block[index], snap_grid);
+			if( snap_index_x > region_index_x - 2 &&
+				snap_index_x < region_index_x + 2 &&
+				snap_index_y > region_index_y - 2 &&
+				snap_index_y < region_index_y + 2 ){
+				if(be == NULL){
+					AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
+				}/*else{
+					//WAVE FUNCTION COLLAPSE THAT BLOCK ACCORDING TO RULES
+					snap_grid = (Vector3){be->position.x, be->position.y + CUBE_SIZE, be->position.z};
+					AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
+					PrintAllBlocks(head_block);
+					TraceLog(LOG_INFO, "BLOCK: %d @ {%.2f, %.2f}", index, be->position.x, be->position.y);
+				}*/
+			}
+		}
+		//DrawCubeWiresV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
+		DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
+	}
+}
+
 int main(int argc, char **argv){
 	InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "WaveFunctionColapse Test");
 	Block_Element *head_block[100];
@@ -142,6 +177,9 @@ int main(int argc, char **argv){
 	};
 
 	Shader fog_shader = LoadShader(0, TextFormat("/home/tapir/Projects/libs/raylib/examples/shaders/resources/shaders/glsl%i/pixelizer.fs", GLSL_VERSION));
+	Mesh cube_mesh = (GenMeshCube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE));
+    Material cube_material = LoadMaterialDefault();
+    cube_material.maps[MATERIAL_MAP_DIFFUSE].color = GRAY;
 
 	HideCursor();
 
@@ -161,6 +199,15 @@ int main(int argc, char **argv){
 		int region_index_y = (int)(cam3d.position.z / 100);
 		//TraceLog(LOG_INFO, "REGION: {%.2f, %.2f, %.2f}", cam3d.position.x, cam3d.position.y, cam3d.position.z);
 
+		RayCollision rc = GetRayCollisionQuad(camera_ray, 
+			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
+			(Vector3){WORLD_WIDTH, 0, -WORLD_HEIGHT},
+			(Vector3){-WORLD_WIDTH, 0, -WORLD_HEIGHT},
+			(Vector3){-WORLD_WIDTH, 0, WORLD_HEIGHT});
+
+		RayCollision rc_block = {0};
+		int draw_hit_block = 0;
+
 		//for(int y = region_index_y - 1; y < region_index_y + 1; y++){
 			//for(int x = region_index_x - 1; x < region_index_x + 1; x++){
 			//int index = (x+5) + (y+5) * 10;
@@ -168,55 +215,45 @@ int main(int argc, char **argv){
 				Block_Element *be = head_block[index]->next;
 				// https://www.raylib.com/examples/shaders/loader.html?name=shaders_fog
 				// Later to make some fog so we dont have to show as much
+
 				while(be != NULL){
-					DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
+					//DrawSphere(be->position, CUBE_SIZE/2, PURPLE);
+					//DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
+					Matrix cube_transform = MatrixTranslate(be->position.x, be->position.y, be->position.z);
+					DrawMesh(cube_mesh, cube_material, cube_transform);
 					DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+
+					rc_block = GetRayCollisionMesh(camera_ray, cube_mesh, cube_transform);
+					if(rc_block.hit && !draw_hit_block){
+						draw_hit_block = 1;
+						Vector3 new_pos = (Vector3){be->position.x + (rc_block.normal.x * CUBE_SIZE),
+												be->position.y + (rc_block.normal.y * CUBE_SIZE),
+												be->position.z + (rc_block.normal.z * CUBE_SIZE)};
+						DrawCubeWiresV(new_pos, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+						if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+							Block_Element *be_tmp = GetBlock(head_block[index], new_pos);
+							if(be_tmp == NULL){
+								AddBlock(head_block[(((int)(new_pos.x/100))+5) + (((int)(new_pos.z/100))+5) * 10], new_pos, stone);
+								TraceLog(LOG_INFO, "RAY BLOCK: {%.2f, %.2f, %.2f}", rc_block.point.x, rc_block.point.y, rc_block.point.z);
+								TraceLog(LOG_INFO, "RAY NORMAL: {%.2f, %.2f, %.2f}", rc_block.normal.x, rc_block.normal.y, rc_block.normal.z);
+							}
+						}
+					}
 					be = be->next;
 				}
+				draw_hit_block = 0;
 			}
 		//}
-	
-		RayCollision rc = GetRayCollisionQuad(camera_ray, 
-			(Vector3){WORLD_WIDTH, 0, WORLD_HEIGHT},
-			(Vector3){WORLD_WIDTH, 0, -WORLD_HEIGHT},
-			(Vector3){-WORLD_WIDTH, 0, -WORLD_HEIGHT},
-			(Vector3){-WORLD_WIDTH, 0, WORLD_HEIGHT});
-		//TraceLog(LOG_INFO, "%d, (%f, %f, %f)",block_pos_index, rc.point.x, rc.point.y, rc.point.z);
-		if(rc.hit){
-			Vector3 snap_grid = {
-				(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
-				0,
-				(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
-			};
 
-			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
-				int index = (region_index_x + 5) + (region_index_y + 5) * 10;
-				int snap_index_x = (snap_grid.x / 100);
-				int snap_index_y = (snap_grid.z / 100);
-				Block_Element *be = GetBlock(head_block[index], snap_grid);
-				if( snap_index_x > region_index_x - 2 &&
-					snap_index_x < region_index_x + 2 &&
-					snap_index_y > region_index_y - 2 &&
-					snap_index_y < region_index_y + 2 ){
-					if(be == NULL){
-						AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
-					}else{
-						//WAVE FUNCTION COLLAPSE THAT BLOCK ACCORDING TO RULES
-						snap_grid = (Vector3){be->position.x, be->position.y + CUBE_SIZE, be->position.z};
-						AddBlock(head_block[(((int)(snap_grid.x/100))+5) + (((int)(snap_grid.z/100))+5) * 10], snap_grid, stone);
-						PrintAllBlocks(head_block);
-						TraceLog(LOG_INFO, "BLOCK: %d @ {%.2f, %.2f}", index, be->position.x, be->position.y);
-					}
-				}
-			}
-			DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
-		}
-
+		draw_on_plain(rc, head_block, region_index_x, region_index_y);
 		DrawPlane((Vector3){0,0,0}, (Vector2){WORLD_WIDTH, WORLD_HEIGHT}, BLUE);
 		DrawGrid(WORLD_WIDTH, CUBE_SIZE * 4);
 
 		EndMode3D();
 
+
+		DrawLine(WINDOW_WIDTH/2 - 5, WINDOW_HEIGHT/2, WINDOW_WIDTH/2 + 5, WINDOW_HEIGHT/2, WHITE);
+		DrawLine(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 5, WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 5, WHITE);
 		DrawFPS(10, 10);
 
 		EndDrawing();
