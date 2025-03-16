@@ -154,9 +154,11 @@ int main(int argc, char **argv){
 										0, 1/CUBE_SIZE, 0, -CUBE_SIZE,
 										0, 0, WORLD_HEIGHT/CUBE_SIZE, 0,
 										0, 0, 0, 1 };
-	Shader fog_shader = LoadShader(0, TextFormat("/home/tapir/Projects/libs/raylib/examples/shaders/resources/shaders/glsl%i/pixelizer.fs", GLSL_VERSION));
+	//Shader fog_shader = LoadShader(0, TextFormat("/home/tapir/Projects/libs/raylib/examples/shaders/resources/shaders/glsl%i/predator.fs", GLSL_VERSION));
+	Shader fog_shader = LoadShader(0, TextFormat("test.fs", GLSL_VERSION));
 	Mesh cube_mesh = (GenMeshCube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE));
     Material cube_material = LoadMaterialDefault();
+	cube_material.shader = fog_shader;
     cube_material.maps[MATERIAL_MAP_DIFFUSE].color = GRAY;
 
     Material floor_material = LoadMaterialDefault();
