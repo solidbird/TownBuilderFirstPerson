@@ -197,6 +197,7 @@ int main(int argc, char **argv){
 
 			rc_block = GetRayCollisionMesh(camera_ray, cube_mesh, cube_transform);
 			if(rc_block.hit && !draw_hit_block){
+				rc_floor.hit = 0;
 				draw_hit_block = 1;
 				Vector3 new_pos = (Vector3){be->position.x + (rc_block.normal.x * CUBE_SIZE),
 											be->position.y + (rc_block.normal.y * CUBE_SIZE),
