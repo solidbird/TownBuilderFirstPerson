@@ -78,9 +78,8 @@ void AddBlock(Block_Element *be, Vector3 pos, ELEMENT element_type){
 
 int DeleteBlock(Block_Element *be, Vector3 pos){
 	Block_Element *tmp_be = be->next;
-	Block_Element *prev_be = NULL;
+	Block_Element *prev_be = be;
 	while(tmp_be != NULL){
-		prev_be = tmp_be;
 		if( tmp_be->position.x == pos.x &&
 			tmp_be->position.y == pos.y &&
 			tmp_be->position.z == pos.z ){
@@ -89,6 +88,7 @@ int DeleteBlock(Block_Element *be, Vector3 pos){
 
 				return 1;
 		}
+		prev_be = tmp_be;
 		tmp_be = tmp_be->next;
 	}
 
@@ -158,7 +158,6 @@ int main(int argc, char **argv){
 	Shader fog_shader = LoadShader(0, TextFormat("test.fs", GLSL_VERSION));
 	Mesh cube_mesh = (GenMeshCube(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE));
     Material cube_material = LoadMaterialDefault();
-	cube_material.shader = fog_shader;
     cube_material.maps[MATERIAL_MAP_DIFFUSE].color = GRAY;
 
     Material floor_material = LoadMaterialDefault();
@@ -194,6 +193,7 @@ int main(int argc, char **argv){
 			//DrawSphere(be->position, CUBE_SIZE/2, PURPLE);
 			//DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
 			Matrix cube_transform = MatrixTranslate(be->position.x, be->position.y, be->position.z);
+			cube_material.maps[MATERIAL_MAP_DIFFUSE].color = element_color[be->element_type];
 			DrawMesh(cube_mesh, cube_material, cube_transform);
 			DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
 
@@ -205,6 +205,9 @@ int main(int argc, char **argv){
 											be->position.y + (rc_block.normal.y * CUBE_SIZE),
 											be->position.z + (rc_block.normal.z * CUBE_SIZE)};
 				DrawCubeWiresV(new_pos, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+				if(IsKeyPressed(KEY_O) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)){
+					DeleteBlock(head_block, be->position);
+				}
 				if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
 					Block_Element *be_tmp = GetBlock(head_block, new_pos);
 					if(be_tmp == NULL){
