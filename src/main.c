@@ -69,11 +69,49 @@ void PrintAllBlocks(Block_Element *be[100]){
 }
 
 void AddBlock(Block_Element *be, Vector3 pos, ELEMENT element_type){
+
 	Block_Element *tmp_be = be->next;
 	be->next = malloc(sizeof(Block_Element));
 	be->next->position = pos;
 	be->next->element_type = element_type;
 	be->next->next = tmp_be;
+
+	switch(be->element_type){
+		case stone:
+			//TODO if stone block is added on Y = CUBE_SIZE then try to run recursive function
+		break;
+	}
+}
+
+Block_Element* GetBlock(Block_Element *be, Vector3 pos){
+	Block_Element *tmp_be = be->next;
+	while(tmp_be != NULL){
+		if( tmp_be->position.x == pos.x &&
+			tmp_be->position.y == pos.y &&
+			tmp_be->position.z == pos.z ){
+				return tmp_be;
+		}
+		tmp_be = tmp_be->next;
+	}
+
+	return NULL;
+}
+
+void surround_sand(Block_Element *head_block, Block_Element *be){
+	if(be->position.y != CUBE_SIZE/2) return;
+	Vector3 tmp_pos = be->position;
+	for(int y = -1; y <= 1; y++){
+		for(int x = -1; x <= 1; x++){
+			if(y == 0 && x == 0) continue;
+			Vector3 pos = {
+				be->position.x + x * CUBE_SIZE,
+				CUBE_SIZE/2,
+				be->position.z + y * CUBE_SIZE
+			};
+			Block_Element *b = GetBlock(head_block, pos);
+			if(b == NULL) AddBlock(head_block, pos, shore);
+		}
+	}
 }
 
 int DeleteBlock(Block_Element *be, Vector3 pos){
@@ -95,25 +133,11 @@ int DeleteBlock(Block_Element *be, Vector3 pos){
 	return 0;
 }
 
-Block_Element* GetBlock(Block_Element *be, Vector3 pos){
-	Block_Element *tmp_be = be->next;
-	while(tmp_be != NULL){
-		if( tmp_be->position.x == pos.x &&
-			tmp_be->position.y == pos.y &&
-			tmp_be->position.z == pos.z ){
-				return tmp_be;
-		}
-		tmp_be = tmp_be->next;
-	}
-
-	return NULL;
-}
-
 static inline void draw_on_plain(RayCollision rc, Block_Element *head_block, int region_index_x, int region_index_y){
 	if(rc.hit){
 		Vector3 snap_grid = {
 			(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
-			CUBE_SIZE,
+			CUBE_SIZE/2,
 			(int)(rc.point.z/CUBE_SIZE) * CUBE_SIZE,
 		};
 
@@ -127,6 +151,7 @@ static inline void draw_on_plain(RayCollision rc, Block_Element *head_block, int
 				snap_index_y < region_index_y + 2 ){
 				if(be == NULL){
 					AddBlock(head_block, snap_grid, stone);
+					surround_sand(head_block, head_block->next);
 				}
 			}
 		}
@@ -211,10 +236,16 @@ int main(int argc, char **argv){
 				if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
 					Block_Element *be_tmp = GetBlock(head_block, new_pos);
 					if(be_tmp == NULL){
-						AddBlock(head_block, new_pos, stone);
-						be = head_block;
-						TraceLog(LOG_INFO, "RAY BLOCK: {%.2f, %.2f, %.2f}", rc_block.point.x, rc_block.point.y, rc_block.point.z);
-						TraceLog(LOG_INFO, "RAY NORMAL: {%.2f, %.2f, %.2f}", rc_block.normal.x, rc_block.normal.y, rc_block.normal.z);
+						if(be->element_type == shore){
+							DeleteBlock(head_block, be->position);
+							new_pos.y = CUBE_SIZE/2;
+							AddBlock(head_block, new_pos, stone);
+						}else{
+							AddBlock(head_block, new_pos, stone);
+							TraceLog(LOG_INFO, "RAY BLOCK: {%.2f, %.2f, %.2f}", rc_block.point.x, rc_block.point.y, rc_block.point.z);
+							TraceLog(LOG_INFO, "RAY NORMAL: {%.2f, %.2f, %.2f}", rc_block.normal.x, rc_block.normal.y, rc_block.normal.z);
+						}
+						surround_sand(head_block, head_block->next);
 					}
 				}
 			}
@@ -228,7 +259,6 @@ int main(int argc, char **argv){
 		DrawGrid(WORLD_WIDTH, CUBE_SIZE * 4);
 
 		EndMode3D();
-
 
 		DrawLine(WINDOW_WIDTH/2 - 5, WINDOW_HEIGHT/2, WINDOW_WIDTH/2 + 5, WINDOW_HEIGHT/2, WHITE);
 		DrawLine(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 5, WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 5, WHITE);
