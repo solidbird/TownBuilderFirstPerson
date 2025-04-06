@@ -1,16 +1,17 @@
-#include <stdio.h>
 #define RCAMERA_IMPLEMENTATION
 #define RL_CULL_DISTANCE_FAR 1000
 #define RL_CULL_DISTANCE_NEAR 0.01 
-#define RCAMERA_IMPLEMENTATION
 
-#include <raylib.h>
-#include "rcamera.h"
-#include "block_utils.h"
-#include <raymath.h>
+#include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include <raylib.h>
+#include <raymath.h>
+
+#include "rcamera.h"
+#include "block_utils.h"
 
 #define GLSL_VERSION 330
 
