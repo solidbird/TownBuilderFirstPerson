@@ -146,117 +146,50 @@ int DeleteBlock(Block_Element *be, Vector3 pos){
 	return 0;
 }
 
-/*
-TODO:
-0. go in one of three directions (<-^->)
-1. go through left to right (<-, ^, ->)
-2. if find neighbor at direction
-3. count for that direction
-4. keep going for that direction
-5. if no block any more for that go left or right from that direction (<-, ->)
-6. follow 3.
-7. if you end up at position of the start position than you done
-8. calculate from the start position + direction count the closing area
+int go_dir(Block_Element *be_head, Vector3 start, Vector3 pos, int dir_count[4], int dirs[3], Block_Element*gather_circle){
+	 Vector3 next_pos = pos;
+	 Vector3 prev_pos = {0};
+	 for(int i = 0; i < 3; i++){
+		 prev_pos = next_pos;
+		 switch(dirs[i]){
+			 case 0: next_pos.x += CUBE_SIZE; break;
+			 case 1: next_pos.z += CUBE_SIZE; break;
+			 case 2: next_pos.x -= CUBE_SIZE; break;
+			 case 3: next_pos.z -= CUBE_SIZE; break;
+			 default: continue;
+		 }
+		 Block_Element *next_block = GetBlock(be_head, next_pos);
+		 if(next_block == NULL || next_block->element_type != building){
+			 next_pos = prev_pos;
+			 dirs[i] = -1;
+			 TraceLog(LOG_INFO, "PREV POS {%.2f, %.2f}", prev_pos.x, prev_pos.z);
+			 continue;
+		 }
+		 dir_count[dirs[i]]++;
 
-Block_Element* GetAreaOfWithinLoop(Block_Element *be, Vector3 start_pos){
-	int direction_count[4] = {0};
-	Vector3 prev_pos = start_pos;
-	Vector3 next_pos = start_pos;
-	int direction = 0;
+		 int new_dirs[3] = {(((dirs[i]-1)+4)%4), dirs[i], (((dirs[i]+1)+4)%4)};
+		 dirs[i] = -1;
 
-	do{
-		prev_pos = next_pos;
-		switch(direction){
-			case 0:
-				next_pos.x += CUBE_SIZE;
-			break;
-			case 1:
-				next_pos.z += CUBE_SIZE;
-			break;
-			case 2:
-				next_pos.x -= CUBE_SIZE;
-			break;
-			case 3:
-				next_pos.z -= CUBE_SIZE;
-			break;
-		}
-		Block_Element *next_block = GetBlock(be, next_pos);
-		if(next_block != NULL){
-			direction_count[direction]++;
-		}else{
-			next_pos = prev_pos;
-			if(direction % 2){
-			}else{
-			}
-		}
-	}while(next_pos == start_pos);
-		
-}*/
+		 int sum = 0;
+		 for(size_t j = 0; j < 4; j++){
+			 sum += dir_count[j];
+		 }
 
-int go_dir(Block_Element *be_head, Vector3 start, Vector3 pos, int dir_count[4], int dirs[3], Block_Element *gather_circle){
-	//__asm__("int3");
-	Vector3 next_pos = pos;
-	for(size_t i = 0; i < 3; i++){
-		switch(dirs[i]){
-			case 0:
-				next_pos.x += CUBE_SIZE;
-			break;
-			case 1:
-				next_pos.z += CUBE_SIZE;
-			break;
-			case 2:
-				next_pos.x -= CUBE_SIZE;
-			break;
-			case 3:
-				next_pos.z -= CUBE_SIZE;
-			break;
-			default:
-				continue;
-		}
-		Block_Element *next_block = GetBlock(be_head, next_pos);
-		if(next_block == NULL || next_block->element_type != building){
-			dirs[i] = -1;
-			continue;
-		}
-		dir_count[dirs[i]]++;
-
-		//TODO: If we have a direction than stay with that direction
-		int new_dirs[3] = {(((dirs[i]-1)+4)%4), dirs[i], (((dirs[i]+1)+4)%4)};
-		//ROTATE_RIGHT	->	{-1, dirs[i], (((dirs[i]+1)+4)%4)}
-		//ROTATE_LEFT	->	{(((dirs[i]-1)+4)%4), dirs[i], -1}
-
-		dirs[i] = -1;
-		
-		int sum = 0;
-		for(size_t j = 0; j < 4; j++){
-			sum += dir_count[j];
-		}
-
-		if(sum > 14){
-			return -2;
-		}
-
-		Block_Element *tmp_gather_circle = gather_circle->next;
-		gather_circle->next = malloc(sizeof(Block_Element));
-		gather_circle->next->position = next_block->position;
-		gather_circle->next->element_type = next_block->element_type;
-		gather_circle->next->next = tmp_gather_circle;
-
-		if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
+		 if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
 			return 1;
-		}
+		 } 
+		 if(sum > 15) return -2;
 
-		int ret_val = go_dir(be_head, start, next_pos, dir_count, new_dirs, gather_circle);
-		if(ret_val > 0){
-			return ret_val;
-		}
-	}
-	if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
-		return 1;
-	}else{
-		return -1;
-	}
-}
+		 Block_Element *tmp_gather_circle = gather_circle->next;
+		 gather_circle->next = malloc(sizeof(Block_Element));
+		 gather_circle->next->position = next_block->position;
+		 gather_circle->next->element_type = next_block->element_type;
+		 gather_circle->next->next = tmp_gather_circle;
+
+		 return go_dir(be_head, start, next_pos, dir_count, new_dirs, gather_circle);
+	 }
+	 return -1;
+} 
 
 static inline void draw_on_plain(RayCollision rc, Block_Element *head_block, int region_index_x, int region_index_y){
 	if(rc.hit){
