@@ -21,6 +21,7 @@
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
 
+
 Color element_color[] = {GRAY, GREEN, YELLOW, PURPLE};
 
 Vector3 get_camera_look_direction(Camera3D *cam3d){
@@ -32,7 +33,6 @@ Vector3 get_camera_look_direction(Camera3D *cam3d){
 
 void surround_sand(Block_Element *head_block, Block_Element *be){
 	if(be->position.y != CUBE_SIZE/2) return;
-	Vector3 tmp_pos = be->position;
 	for(int y = -1; y <= 1; y++){
 		for(int x = -1; x <= 1; x++){
 			if(y == 0 && x == 0) continue;
@@ -47,52 +47,9 @@ void surround_sand(Block_Element *head_block, Block_Element *be){
 	}
 }
 
-int go_dir(Block_Element *be_head, Vector3 start, Vector3 pos, int dir_count[4], int dirs[3], Block_Element*gather_circle){
-	 Vector3 next_pos = pos;
-	 Vector3 prev_pos = {0};
-	 for(int i = 0; i < 3; i++){
-		 prev_pos = next_pos;
-		 switch(dirs[i]){
-			 case 0: next_pos.x += CUBE_SIZE; break;
-			 case 1: next_pos.z += CUBE_SIZE; break;
-			 case 2: next_pos.x -= CUBE_SIZE; break;
-			 case 3: next_pos.z -= CUBE_SIZE; break;
-			 default: continue;
-		 }
-		 Block_Element *next_block = GetBlock(be_head, next_pos);
-		 if(next_block == NULL || next_block->element_type != building){
-			 next_pos = prev_pos;
-			 dirs[i] = -1;
-			 TraceLog(LOG_INFO, "PREV POS {%.2f, %.2f}", prev_pos.x, prev_pos.z);
-			 continue;
-		 }
-		 dir_count[dirs[i]]++;
+ 
 
-		 int new_dirs[3] = {(((dirs[i]-1)+4)%4), dirs[i], (((dirs[i]+1)+4)%4)};
-		 dirs[i] = -1;
-
-		 int sum = 0;
-		 for(size_t j = 0; j < 4; j++){
-			 sum += dir_count[j];
-		 }
-
-		 if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
-			return 1;
-		 } 
-		 if(sum > 15) return -2;
-
-		 Block_Element *tmp_gather_circle = gather_circle->next;
-		 gather_circle->next = malloc(sizeof(Block_Element));
-		 gather_circle->next->position = next_block->position;
-		 gather_circle->next->element_type = next_block->element_type;
-		 gather_circle->next->next = tmp_gather_circle;
-
-		 return go_dir(be_head, start, next_pos, dir_count, new_dirs, gather_circle);
-	 }
-	 return -1;
-} 
-
-static inline void draw_on_plain(RayCollision rc, Block_Element *head_block, int region_index_x, int region_index_y){
+void draw_on_plain(RayCollision rc, Block_Element *head_block, int region_index_x, int region_index_y){
 	if(rc.hit){
 		Vector3 snap_grid = {
 			(int)(rc.point.x/CUBE_SIZE) * CUBE_SIZE,
@@ -116,6 +73,59 @@ static inline void draw_on_plain(RayCollision rc, Block_Element *head_block, int
 		}
 		DrawCubeV(snap_grid, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, RED);
 	}
+}
+
+void draw_on_blocks(Block_Element *head_block, Mesh *cube_mesh, Material *cube_material, Ray *camera_ray, RayCollision *rc_floor){
+	//--------------------------------------
+	Block_Element *be = head_block->next;
+	int draw_hit_block = 0;
+	// https://www.raylib.com/examples/shaders/loader.html?name=shaders_fog
+	// Later to make some fog so we dont have to show as much
+
+	while(be != NULL){
+		Matrix cube_transform = MatrixTranslate(be->position.x, be->position.y, be->position.z);
+		cube_material->maps[MATERIAL_MAP_DIFFUSE].color = element_color[be->element_type];
+		DrawMesh(*cube_mesh, *cube_material, cube_transform);
+		DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+
+		RayCollision rc_block = GetRayCollisionMesh(*camera_ray, *cube_mesh, cube_transform);
+		if(rc_block.hit && !draw_hit_block){
+			rc_floor->hit = 0;
+			draw_hit_block = 1;
+			Vector3 new_pos = (Vector3){be->position.x + (rc_block.normal.x * CUBE_SIZE),
+										be->position.y + (rc_block.normal.y * CUBE_SIZE),
+										be->position.z + (rc_block.normal.z * CUBE_SIZE)};
+			DrawCubeWiresV(new_pos, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
+			if(IsKeyPressed(KEY_O) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)){
+				DeleteBlock(head_block, be->position);
+			}
+			if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+				Block_Element *be_tmp = GetBlock(head_block, new_pos);
+				if(be_tmp == NULL){
+					switch(be->element_type){
+						case shore:
+							DeleteBlock(head_block, be->position);
+							new_pos.y = CUBE_SIZE/2;
+							AddBlock(head_block, new_pos, stone);
+						break;
+						case stone:
+						case building:
+							AddBlock(head_block, new_pos, building);
+						break;
+						default:
+							AddBlock(head_block, new_pos, stone);
+							TraceLog(LOG_INFO, "RAY BLOCK: {%.2f, %.2f, %.2f}", rc_block.point.x, rc_block.point.y, rc_block.point.z);
+							TraceLog(LOG_INFO, "RAY NORMAL: {%.2f, %.2f, %.2f}", rc_block.normal.x, rc_block.normal.y, rc_block.normal.z);
+						break;
+					}
+					surround_sand(head_block, head_block->next);
+				}
+			}
+		}
+		be = be->next;
+	}
+	draw_hit_block = 0;
+	//---------------------------------
 }
 
 int main(int argc, char **argv){
@@ -164,62 +174,9 @@ int main(int argc, char **argv){
 		int region_index_x = (int)(cam3d.position.x / 100);
 		int region_index_y = (int)(cam3d.position.z / 100);
 
-		RayCollision rc_block = {0};
 		RayCollision rc_floor = GetRayCollisionMesh(camera_ray, cube_mesh, floor_transform);
-		int draw_hit_block = 0;
 
-		//--------------------------------------
-		Block_Element *be = head_block->next;
-		// https://www.raylib.com/examples/shaders/loader.html?name=shaders_fog
-		// Later to make some fog so we dont have to show as much
-
-		while(be != NULL){
-			//DrawSphere(be->position, CUBE_SIZE/2, PURPLE);
-			//DrawCubeV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, element_color[be->element_type]);
-			Matrix cube_transform = MatrixTranslate(be->position.x, be->position.y, be->position.z);
-			cube_material.maps[MATERIAL_MAP_DIFFUSE].color = element_color[be->element_type];
-			DrawMesh(cube_mesh, cube_material, cube_transform);
-			DrawCubeWiresV(be->position, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
-
-			rc_block = GetRayCollisionMesh(camera_ray, cube_mesh, cube_transform);
-			if(rc_block.hit && !draw_hit_block){
-				rc_floor.hit = 0;
-				draw_hit_block = 1;
-				Vector3 new_pos = (Vector3){be->position.x + (rc_block.normal.x * CUBE_SIZE),
-											be->position.y + (rc_block.normal.y * CUBE_SIZE),
-											be->position.z + (rc_block.normal.z * CUBE_SIZE)};
-				DrawCubeWiresV(new_pos, (Vector3){CUBE_SIZE, CUBE_SIZE, CUBE_SIZE}, BLACK);
-				if(IsKeyPressed(KEY_O) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)){
-					DeleteBlock(head_block, be->position);
-				}
-				if(IsKeyPressed(KEY_I) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
-					Block_Element *be_tmp = GetBlock(head_block, new_pos);
-					if(be_tmp == NULL){
-						switch(be->element_type){
-							case shore:
-								DeleteBlock(head_block, be->position);
-								new_pos.y = CUBE_SIZE/2;
-								AddBlock(head_block, new_pos, stone);
-							break;
-							case stone:
-							case building:
-								AddBlock(head_block, new_pos, building);
-
-							break;
-							default:
-								AddBlock(head_block, new_pos, stone);
-								TraceLog(LOG_INFO, "RAY BLOCK: {%.2f, %.2f, %.2f}", rc_block.point.x, rc_block.point.y, rc_block.point.z);
-								TraceLog(LOG_INFO, "RAY NORMAL: {%.2f, %.2f, %.2f}", rc_block.normal.x, rc_block.normal.y, rc_block.normal.z);
-							break;
-						}
-						surround_sand(head_block, head_block->next);
-					}
-				}
-			}
-			be = be->next;
-		}
-		draw_hit_block = 0;
-		//---------------------------------
+		draw_on_blocks(head_block, &cube_mesh, &cube_material, &camera_ray, &rc_floor);
 
 		draw_on_plain(rc_floor, head_block, region_index_x, region_index_y);
 		DrawMesh(cube_mesh, floor_material, floor_transform);

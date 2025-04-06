@@ -24,5 +24,6 @@ void AddBlock(Block_Element *be, Vector3 pos, ELEMENT element_type);
 Block_Element* GetBlock(Block_Element *be, Vector3 pos);
 int DeleteBlock(Block_Element *be, Vector3 pos);
 void PrintBlocks(Block_Element *be);
+int LoopDetection(Block_Element *be_head, Vector3 start, Vector3 pos, int dir_count[4], int dirs[3], Block_Element*gather_circle);
 
 #endif
