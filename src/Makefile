@@ -10,5 +10,5 @@ all: build_folder main
 build_folder:
 	@mkdir -p $(BUILD)
 
-main: main.c
+main: main.c block_utils.c
 	$(CC) $(CFLAGS) -o $(BUILD)/$@ $^ $(LIBS) -lm
