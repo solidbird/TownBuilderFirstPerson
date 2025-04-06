@@ -111,16 +111,16 @@ int LoopDetection(Block_Element *be_head, Vector3 start, Vector3 pos, int dir_co
 			 sum += dir_count[j];
 		 }
 
-		 if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
-			return 1;
-		 } 
-		 if(sum > 15) return -2;
-
 		 Block_Element *tmp_gather_circle = gather_circle->next;
 		 gather_circle->next = malloc(sizeof(Block_Element));
 		 gather_circle->next->position = next_block->position;
 		 gather_circle->next->element_type = next_block->element_type;
 		 gather_circle->next->next = tmp_gather_circle;
+
+		 if(next_pos.x == start.x && next_pos.y == start.y && next_pos.z == start.z){
+			return 1;
+		 } 
+		 if(sum > 15) return -2;		 
 
 		 return LoopDetection(be_head, start, next_pos, dir_count, new_dirs, gather_circle);
 	 }

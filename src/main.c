@@ -47,8 +47,6 @@ void surround_sand(Block_Element *head_block, Block_Element *be){
 	}
 }
 
- 
-
 void draw_on_plain(RayCollision rc, Block_Element *head_block, int region_index_x, int region_index_y){
 	if(rc.hit){
 		Vector3 snap_grid = {
